@@ -1,0 +1,7 @@
+cvxpy
+numpy
+
+# necessary for the common_nouns examples
+pandas
+openai
+python-dotenv
