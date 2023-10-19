@@ -1,6 +1,15 @@
-# convex-projection
+# Embedding-Cvx-Projection
 
-This repo introduces a simple convex-optimization method that aims to find the best approximation to a target embedding based on a reduced set of relevant but diverse embeddings.
+This repo introduces a simple [convex optimization](https://en.wikipedia.org/wiki/Convex_optimization) method that aims to find the best approximation to a target embedding based on a reduced set of relevant but diverse embeddings.
+
+The operation achieved is analogous to answering the question: _how can I best explain my input embedding by *meaningfully* combining embeddings from a specified set?_.
+
+Presumed applications for it are:
+- retrieving relevant but diverse contexts in the retrieval step of [Retrieval Augmented Generation](https://research.ibm.com/blog/retrieval-augmented-generation-RAG) (RAG) workflow.
+- extending [knowledge graphs](https://en.wikipedia.org/wiki/Knowledge_graph) by inferring relationships from already existing ones.
+
+For an _in-depth_ discussion regarding its derivation and applications, please check the extended [background](docs/background.md) document that discusses the theory, implementation, and examples.
+
 
 ## HOW TO USE IT
 
@@ -15,27 +24,73 @@ This will install the `embedding_cvx_projection` package along with its dependen
 
 ### Running examples
 
-Once the package is installed, you can try running the example scripts to understand how to effectively use this technique. Indeed, the `embedding_cvx_projection` package is very lean, so that this repository can be best understood as documentation and examples in how to use the given `cvxpy` projection technique.
+Once the package is installed, you can run the example scripts to understand how to  use this technique. Indeed, the `embedding_cvx_projection` package is very lean, so that this repository can be best understood as documentation and examples in how to use the given `cvxpy` projection technique.
 
 #### Common nouns example
 
-Before running this example you may need to have all modules in `requirements.txt` installed. And in case you want to use words not in the list `common_nouns` an openai api key. 
+##### Overview
 
-Then, after navigating to `examples/common_nouns` you can run:
+This script explores a scenario mimicking the extension of a Knowledge Graph (KG) by linking additional features to an entity based on already linked features. 
 
+For instance, an e-commerce shop selling furniture may have features associated to products, where the features are drawn from a closed but extensive set. In a specific example, say a furniture piece has properties _waterproof_ and _durable_; leveraging the inference mechanism implemented in our algorithm, it would possible to automatically attach (or suggest attaching) _outdoors_ to it.
+
+⚠️ **Note**: The given algorithm uses OpenAI embeddings, so make sure you have a valid `OPENAI_API_KEY` set up for on-the-fly embedding if any of your words are not in the list of 500 common nouns.
+
+##### Task
+
+The goal here is to identify which nouns, from a predefined list of around 500 common nouns, are closely related or can be derived based on a given list of input words. This algorithm utilizes the OpenAI embeddings for those 500 nouns, encapsulated in an `EmbeddingLibrary` object.
+
+
+##### Running it 
+
+Before running this example you need to install the modules in `requirements.txt`. 
+
+Navigate to `examples/common_nouns` directory, and execute the script `infer_nouns_from_nouns.py` with your input words as arguments:
 ```
-python compose_meanings_in_meaning.py word1 word2 ...
+python infer_nouns_from_nouns.py word1 word2 ...
 ```
 
-With that you will get as output a list of all the words whose meanings can be generated combining the meanings of the input words.
+The script processes then processes input words which can either belong to a list of 500 common nouns or not. If not, they can be embedded on-the-fly using the OpenAI embeddings endpoint. For on-the-fly embeddings, a valid `OPENAI_API_KEY` environment variable needs to be set.
 
-For instance, executing
-```
-python compose_meanings_in_meaning.py prince sister heir
-```
-produces a list with `princess`, `person` and `daugther` in the top three positions.
+##### Output 
 
-### Synthetic retrieval example
+Here's an example output for the inputs `mountain`, `summit`, `explosion`, and `fire`:
+
+    word, 	  value, 	mixture, 		gain
+    volcano,  0.918, 	[0.38 0.1  0.35 0.17], 	0.377
+    lava, 	  0.893, 	[0.33 0.08 0.31 0.28], 	0.330
+    impact,   0.887, 	[0.17 0.23 0.29 0.32], 	0.317
+    bomb, 	  0.909, 	[0.11 0.13 0.38 0.37], 	0.310
+
+- The first column lists words whose embeddings are better approximated given the embeddings of the input words. 
+- The second column measures the goodness of the approximation (cosine similarity minus the regularization term). 
+- The third column provides the mixing recipe, indicating the proportions in which input embeddings should be combined to approximate the target embedding more closely. 
+- The fourth column shows the gain in similarity, indicating how much closer the target embedding is to the combined embedding than to any _simple_ embedding in the set.
+
+📈 **Interpreting the Output**: In the example output, the word 'volcano' is well approximated because it has a high value of 0.918 and has a mixture of all the input words where 'mountain' and 'explosion' have higher weights. The 'gain' indicates that combining the input words brings us 0.377 closer to 'volcano' than any single input word would.
+
+'Bomb' is also well approximated, but in this case, the words weighted higher are 'explosion' and 'fire'.
+
+#### Synthetic retrieval example
+
+##### Overview
+
+This example simulates a scenario of matching a query embedding against a set of embeddings. That is, the same operation that may be performed in the *R*etrieval step of a Retrieval Augment Generation (RAG) workflow. In that case the embeddings retrieved will point to _contexts_ (text document or chunks thereof) that may contain relevant information with respect to the input query. In practice, what we expect from applying our method to that end is retrieving a set of relevant and diverse embeddings, with which to construct a compact but relevant and informative context for the downstream Generation step.
+
+🔍 **What to Expect**: This example aims to mimic a real-world retrieval scenario but in a simplified manner. It helps in evaluating the effectiveness of our algorithm in returning diverse and relevant embeddings.
+
+##### Task
+
+Instead of using embeddings extracted from real texts, here we abstract the problem generating random vector embeddings with a particular structure. Namely, embeddings are generated around four prototype embeddings, therefore generating four clusters. Moreover, those clusters are exponentially unbalanced in size, with size (number of members) 1, 9, 90 and 900. 
+
+As a final step, the query embedding is constructed also as a random additive combination of the four prototype embeddings. With that, we expect that in order to better reconstruct input embedding, one should gather at least one embedding from each of the four clusters. 
+
+The reason for that, is that one you have retrieved an embedding from one cluster, even though other embeddings from that cluster may still lie close to the query embedding, returning them will result mostly in redundant information that would because of its redundancy will hinder the performance of the generation step.
+
+📚 **Why This Matters**: The example demonstrates how redundant or imbalanced clusters can affect the quality of retrieved information. The goal is to showcase the capability of the algorithm to provide a diverse set of relevant embeddings.
+
+##### Running it
+
 
 Navigate to `examples/synthetic_retrieval` and run:
 
@@ -43,153 +98,68 @@ Navigate to `examples/synthetic_retrieval` and run:
 python redundant_unbalanced_contexts.py
 ```
 
-The result (completely unspectacular) consists in a measure of the average _richness_ of the contexts extracted. That is, to how many different clusters do the retrieved contexts belong. The expectation is that, in this particular case, the higher the better, because then, the lower the redundancy. 
+You can use different parameter to configure the problem, controlling how disperse are the clusters and how balanced are they combined in the input query. 
 
-You can use different parameter to configure the problem differently.
-
-## General problem
-
-Given an input embedding `v`, the objective is to create a _composite embedding_ that closely approximates `v` by additively combining embeddings from a collection `M`. Closeness will be defined in terms of cosine similarity. We further assume that both `v` and the columns in `M` are normalized (which is the usual case for most available embeddings).
-
-Graphically, this can be represented as projecting `v` to the convex cone produced by `M`. That the cone obtain by all the convex combinations of `M`.
-
-### Convex cone
-![Cone](./docs/plot/cone.png)
-
-In this figure we have three vectors (`a`, `b` and `c`). All the dots are generated as (_normalized_) combinations of them three ad they define a surface section of the cone. Indeed, in this 3D example, the normalized vectors all land in the surface of the _normalized ball_ that is delimited by linking the vectors. Note that adding a fourth vector already inside the cone would not change its form, in the sense that it would not extend it.
-
-### Projection to the convex cone 
-![Cone and projection](./docs/plot/cone_0.png)
-
-If we then pose the question: _how close is a vector `v` to the space of all the combinations of `a`, `b` and `c`?_, we are then trying to find the closest _projection_ of our "query" vector in the cone generated by `a`, `b` and `c`. 
-
-In terms of embeddings and semantic representations, this question how much in concept `v` implied by the combination of concepts  `a`, `b` and `c`.
-
-Note that a key point is that `v` may be much closer to a certain combination of the vectors than to any of the individual vector itself, what makes the inference non-trivial. That is, it is not only about finding vectors close to the query vector, but finding how one can _smartly_ combine the a set of vectors to get as close as possible to the query vector.
-
-### Decomposition of in convex combination
-
-![Decomposition of the projection of v](./docs/plot/cone_1.png)
-
-For instance, let's imagine that the green vector represent the embedding for `waterproofed` and the blue one `durable`, the black vector might represent `outdoors`, and what this decomposition would show is that the _meaning_ of `outdoors` is quite closely reconstructed by combining the meanings of `waterproofed` and `durable` in certain additive way. In other words, it is a mathematical way to ground the inference that something that is both `waterproofed` and `durable` is likely adequate for `outdoor`use.
-
-![Decomposition of v into cone vectors](./docs/plot/cone_2.png)
-
-Finally, this method can be also useful even when the query vector (or embedding) is already inside the cone (that is, `v` is already its projection in the cone). In that case, 
-
-One can think of this as the case when a query vector is complex and contains many subtopics. By checking the coefficients of the convex projection, one would be able to retrieve the embeddings which are better aligned to the subtopics, and their relative _relevance_ (or _weight_).
-
-## Applications:
-
-This method can be useful in at least two generic use-cases:
-
-- Decomposing a query embedding in non-redundant but similar embeddings, for instance with the aim of reducing redundancy in a retrieval step. 
-- Finding whether an embedding that doesn't have a close match with any embedding in a given set can, nonetheless, be well-approximated by a combination of them, for instance when aiming to enrich the relationships in a Knowledge graph.
-
-### Reducing redundancy in retrieval 
-The first use-case relates to the Retrieval step in a Retrieval-Augmented Generation problem. In this scenario, similarity in the embedding space to an embedded query is used to retrieve a set of candidate contexts. However, relying on purely in similarity (ie, returning only the N most similar contexts to the query) may result in very similar, redundant contexts, which could penalize application performance. With this method, that problem is remediated by both the non-negativity constraint and the lasso penalty. That results in the system in retrieving vectors which are both relevant to the query (non-negativity) and diverse among themselves (lasso). 
-
-### Extending Knowledge graphs
-
-The second use-case could be relevant in the context of Knowledge graphs.
-
-For instance, in an e-commerce set up, we have items (e.g., a products) and an extensive set of features that can be associated with those items (e.g., features). If the items are annotated manually, annotators may not be exhaustive and not assign all pertinent features with a given item. Assuming that we are provided with embeddings of all features, this method could assist in completing the annotation by inferring additional properties based on the ones already assigned. For example, in the product use case, if a given chair has been tagged as "_waterproof_" and "_durable_", this method could suggest "_outdoor_" as an appropriate additional tag, which could then be used to extend the annotation.
-
-A related use case would when adding a new tag to an _ontology_. In that case, it would be possible to scan the already tagged items, suggesting the ones that could be annotated with it.
-
-But also in the context of Knowledge graphs could be possible to use this mechanism in query time. Say that a user want to filter by the tag "_outdoor_", using this algorithm it could be possible to retrieve items that provide close match to the tag, even though not 1-to-1.
-
-
-## Mathematical definition
-
-In order to facilitate those use cases, this repo con a script to compute the projection of a point onto the convex set defined by the following optimization problem:
-
-
-```math
-min_x -v^T M x + beta ||x||_1
-s.t. ||Mx||_2 <= 1
-            x >= 0
+```
+python redundant_unbalanced_contexts.py
+   -p: number of problems to run
+   -n: number of items to retrieve
+   -c: minimum contribution of each cluster
+   -d: cluster dispersion
 ```
 
-### What does the mathematical formulation mean?
+🛠 Customization: Feel free to experiment with the parameters to see how the algorithm performs under different conditions. For example, a higher cluster dispersion might make the problem more challenging.
 
-#### Maximization objective
 
-First, our goal is to find the mixing coefficients `x`, that applied to `M` produce a vector which is closer to `v`. Giving the coefficients `x`, then the composite embedding is `Mx`. Since we define proximity in terms of cosine similarity, and assuming the composite embedding is as well normalized, maximizing proximity is achieved by maximizing the dot-product `v.T(Mx)` (or minimizing its negative version). 
+Note that if the cluster dispersion is set very high (>0.5) cluster structure may eventually be lost.
 
-In order to avoid redundancy, a lasso penalty term is added to the objective (also known as a l1-regularizer), which weighted by the constant `beta`.
+##### Output
 
-#### Constraints
+The script outputs the average number of contexts present in the solution, along with a summary of the configuration parameters. 
 
-The non-negative constraint `x>=0` ensures that we combine the embeddings in an additive manner, which is relevant provided they if the embeddings represent things like features, topics,that should be combined but not "negated". Like that, we obtain an easy interpretable decomposition of the target embedding in its found "components".
-
-Finally the constraint `||Mx||_2 <= 1` ensures that we are going to maximize the cosine similarity by combining the columns of `M` into a vector that has at most Euclidean norm equal to 1. By the dynamics of the maximization of `v.T (Mx)`, the solver would respect this constraint while driving the norm of `Mx` to 1, up to the solver precision. That will ensure that `Mx` is normalized and that its dot product with `v` yields the cosine similarity.
-
-## CVXPY implementation
-
-What can be translated to the cvxpy problem:
-
-```python
-x = cp.Variable(M.shape[1])
-
-prob = cp.Problem(
-    cp.Minimize(-v.T @ M @ x + beta * cp.sum(x)),
-    [cp.norm2(M @ x) <= 1.0, x >= 0]
-)
+```
+Problem conf. summary:
+----------------------
+Number of problems run: 40
+Number of items retrieved for each the solution: 5
+Minimum contribution of each cluster to the solution: 0.3
+Cluster dispersion: 0.1
+----------------------
+Different clusters per solver (average and std):
+solve_by_cvx_projection: mean 2.75, std: 0.54
+solve_by_least_squares: mean 2.225, std: 0.88
+solve_by_similarities: mean 1.325, std: 0.52
 ```
 
-The only difference with the mathematical formulation is that instead of a lasso penalty/regularization, one can write simply a sum penalty, as we know from the constraint below that all weights are non-negative.
+📊 **Analysis**: The average number of different clusters returned by solve_by_cvx_projection is here consistently higher, indicating that our method is effectively capturing diversity, which would be beneficial for downstream tasks like information retrieval or question answering.
 
-### Optional extension
-
-In some cases, one may want to add a further constraint, `x <= gamma * cp.sum(x)`, where `gamma` is between 0 and 1. Setting `gamma` to e.g. `0.9` will ensure that the mixture in `M` is non-trivial (in the sense that the combination is simply achieved by providing a synonym). The lower we set this parameter, the more we are asking the algorithm to reconstruct `v` with a set of vectors which are dissimilar to it. If we think it as a cooking metaphor, we are replacing an ingredient by another similar one, but with a set of different, that, aggregated achieve the same effect.
-
-One note of caution: if one adds this additional constraint, the number of embeddings in `M` needs to be greater than (`1/gamma`), otherwise the constraint is not satisfiable.
-
-
-## Examples
-
-This repo contains two toy examples to illustrate the possible applications mentioned above.
-
-### Simulated RAG retrieval with redundant contexts
-
-The first toy-example simulates the problem of retrieving a query embedding from DB that contains many redundant ones. The problem is abstracted as producing a random vector by combining 4 different vectors. At its term, we generate a cluster around each of the 4 _seed_ vectors, but with a very unbalanced number of member (exponentially unbalanced). Indeed, cluster 4 has 900 similar members, while cluster is composed of just one vector. 
-
-The desired behavior would be to retrieve in the top N "hits" embeddings belonging to different classes, s.t. we can return diverse information that captures all the info. Indeed, running the simulation, specially for configurations where the coherence of the clusters is high, the convex projection is the _embedding retrieval_ method returning components from greater number of source clusters in the first N hits (e.g., with `N=5` or `10`). In any case, it clearly retrieves more diverse embeddings than the pure search by similarity.
-
-### Composing word meanings into other word meanings
-
-The second toy example aims to illustrate a case related to the one of adding features to an entity based on the features it already has. That can be seen as something similar to extending a knowledge graph.
-
-However, the example deals simply with common nouns. Then, given an input list of nouns, it looks how to combine them to get as close as possible to every word in a given set of words (stored in a library of embeddings). The it lists the results according to the quality of the approximation. For instance, combining the meanings of _lava_ and _mountain_ we are close to the meaning of _volcano_; combining _religion_ and _mortgage_ we get _marriage_; and with _kingdom_ plus _ruler_ we are close to _monarch_. 
-
-### Beyond trivial results 
-
-These examples are reminiscent of the famous _king_ - _man_ + _woman_ = _queen_. Is it then this method just a complex way of getting the same? That is, it is simply true that _mountain_ + _lava_ = _volcano_? Indeed, with the constructed examples above, the result may not differ too much. However, the key advantage of computing these projections, is that in checking for the best (convex) combination, the algorithm can completely ignore words that do not add up to the results, or combine words in disjoint subsets for different suggestions. For instance, if we give it as input the complete list containing _lava_, _mountain_, _religion_, _mortgage_, _kingdom_ and _ruler_, instead of looking to the average embedding of all of them, it can select subsets to find better matches. 
-
-The algorithm that provides this result, not only checks how close the combined embedding is to the target word, it also measures how much _closer_ it is than any single of the words in the combination is. That way it filters out results with simply near-synonyms.
-
-## Novelty?
-
-### _Is this method novel? How does it compare to others?_
-
-There's no way on earth for neither this method nor its application to the domain of reasoning with embeddings to be novel. The convex problem definition is far too simple for it and the application far too obvious. Moreover, I must admit that least squares constrained to positive coefficients (which is, as well, a convex-optimization problem) is a well-known tool in data science, of which non-negative matrix factorizations are usual and very powerful extensions. 
-
-However, I would favor this cosine-similarity maximization to the least squares minimization if only because it is consistent with the similarity measure most used in the context of word-embeddings, namely the cosine-similarity or the dot-product of normalized embeddings.
-
-### _If it isn't novel, why this repo? why bother?_
-
-Even if it isn't novel, these techniques surely don't attract all the attention they deserve in the wide community. Now that LLMs and Vector DBs have driven embedding adoption to a new scale, the community would probably advance faster and get better results if it would embrace these simple, but mathematically well-grounded, tricks.
-
-## Summary 
+## Summary
 
 This repository presents a convex-optimization method designed for approximating target embeddings using a reduced set of diverse and relevant embeddings. Utilizing cosine similarity as the measure of closeness, the method projects a given embedding onto a convex cone defined by a collection of other embeddings. 
 
-The approach is particularly useful in two main scenarios: 1) Reducing redundancy during retrieval in Retrieval-Augmented Generation tasks, and 2) Enriching relationships in Knowledge Graphs by approximating unannotated entities based on existing annotations.
+### _Is this method novel?_
 
-The method is implemented using CVXPY and provides a mathematical formulation that maximizes cosine similarity while adhering to specific constraints, offering both relevance and diversity in the results. 
+While the method and its application in the domain of reasoning with embeddings may not be groundbreaking, it addresses an important gap in practical implementation. Convex optimization techniques are often buried in technical jargon, making them less accessible to practitioners. This very simplicity and obviousness are precisely what make these techniques powerful yet underutilized, particularly as we see a surge in embedding adoption through Language Models and Vector Databases.
 
-Even this may be a known technique and belong to a well-known family of solutions, this repo aims to bridge the gap of its current under-utilization in the domain LLMs and vector DBs.
+### _Why this repo matters_
+
+This repository aims to demystify these robust, mathematically sound techniques by offering approachable practical examples. By doing so, it seeks to accelerate community adoption and enhance current pipelines, providing a valuable resource even if the methods themselves are not novel. The focus here is not on reinventing the wheel but on facilitating its more effective use in a broader context.
+
+**Note**: indeed, at this stage, depending on your use case, rather than importing this module, it will be leaner for your project to directly import `cvxpy` and simply add the code with the problem definition ([here](src/embedding_cvx_projection/cone_projection.py)).
+
+### _Next steps_
+
+There mostly two ways forward for this repo: 
+
+- *Additional use cases*: Develop a more comprehensive set of use case examples, for instance, with a real RAG workflow or specific relation inference from known ontologies. 
+
+- *Integrations*: Explore integrations either with existing vector DBs or an application with a specific Knowledge DB (e.g. an integration with a neo4j graph DB.)
+
+Contributions are welcome.
+
+
+
+
 
 
 

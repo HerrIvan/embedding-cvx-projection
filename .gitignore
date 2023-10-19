@@ -9,7 +9,7 @@
 # Distribution / packaging
 .Python
 build/
-develop-eggs/
+**/develop-eggs/
 dist/
 downloads/
 eggs/
@@ -21,7 +21,7 @@ sdist/
 var/
 wheels/
 share/python-wheels/
-*.egg-info/
+**/*.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
@@ -165,5 +165,5 @@ local_notes.md
 
 **/*.pkl
 **/__pycache__/
-draft_*.py
-/local_drafts/
+**/draft_*.*
+/drafts/

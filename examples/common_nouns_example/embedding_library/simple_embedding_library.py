@@ -11,7 +11,7 @@ import numpy as np
 
 from .embedders import Embedder
 
-# whether to get query embeddings on-the-fly, were they not in the library
+# whether to get query embeddings on-the-fly, if they not in the library.
 EMBED_OTF = True
 
 
