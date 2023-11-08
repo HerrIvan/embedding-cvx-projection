@@ -69,11 +69,13 @@ But also in the context of Knowledge graphs could be possible to use this mechan
 In order to facilitate those use cases, this repo con a script to compute the projection of a point onto the convex set defined by the following optimization problem:
 
 
-```math
-min_x -v^T M x + beta ||x||_1
-s.t. ||Mx||_2 <= 1
-            x >= 0
-```
+$$
+\begin{align*}
+\min_x \quad & -v^T M x + \beta \|x\|_1 \\
+\text{s.t.} \quad & \|Mx\|_2 \leq 1 \\
+& x \geq 0
+\end{align*}
+$$
 
 ### What does the mathematical formulation mean?
 
