@@ -6,7 +6,7 @@ This repo introduces a simple convex-optimization method that aims to find the b
 
 The operation achieved is analogous to answering the question: _how can I best explain my input embedding by _meaningfully_ combining embeddings in the set embeddings set?_.
 
-Presumed applications for it are a) retrieving relevant but diverse contexts in the retrieval step of Retrieval Augmented Generation workflow (RAG) or b) extending knowlege graphs by inferring relationships.
+Presumed applications for it are a) retrieving relevant but diverse contexts in the retrieval step of Retrieval Augmented Generation workflow (RAG) or b) extending knowledge graphs by inferring relationships.
 
 For instruction on _how to use_ please check the [README.md](../README.md) file at the root of this repo.
 
@@ -29,7 +29,7 @@ If we then pose the question: _how close is a vector `v` to the space of all the
 
 In terms of embeddings and semantic representations, this question how much in concept `v` implied by the combination of concepts  `a`, `b` and `c`.
 
-Note that a key point is that `v` may be much closer to a certain combination of the vectors than to any of the individual vector itself, what makes the inference non-trivial. That is, it is not only about finding vectors close to the query vector, but finding how one can _smartly_ combine the a set of vectors to get as close as possible to the query vector.
+Note that a key point is that `v` may be much closer to a certain combination of the vectors than to any of the individual vector itself, what makes the inference non-trivial. That is, it is not only about finding vectors close to the query vector, but finding how one can _smartly_ combine a set of vectors to get as close as possible to the query vector.
 
 ### Decomposition of in convex combination
 
@@ -68,7 +68,6 @@ But also in the context of Knowledge graphs could be possible to use this mechan
 
 In order to facilitate those use cases, this repo con a script to compute the projection of a point onto the convex set defined by the following optimization problem:
 
-
 $$
 \begin{align*}
 \min_x \quad & -v^T M x + \beta \|x\|_1 \\
@@ -89,7 +88,7 @@ In order to avoid redundancy, a lasso penalty term is added to the objective (al
 
 The non-negative constraint `x>=0` ensures that we combine the embeddings in an additive manner, which is relevant provided they if the embeddings represent things like features, topics,that should be combined but not "negated". Like that, we obtain an easy interpretable decomposition of the target embedding in its found "components".
 
-Finally the constraint `||Mx||_2 <= 1` ensures that we are going to maximize the cosine similarity by combining the columns of `M` into a vector that has at most Euclidean norm equal to 1. By the dynamics of the maximization of `v.T (Mx)`, the solver would respect this constraint while driving the norm of `Mx` to 1, up to the solver precision. That will ensure that `Mx` is normalized and that its dot product with `v` yields the cosine similarity.
+Finally, the constraint `||Mx||_2 <= 1` ensures that we are going to maximize the cosine similarity by combining the columns of `M` into a vector that has at most Euclidean norm equal to 1. By the dynamics of the maximization of `v.T (Mx)`, the solver would respect this constraint while driving the norm of `Mx` to 1, up to the solver precision. That will ensure that `Mx` is normalized and that its dot product with `v` yields the cosine similarity.
 
 ## CVXPY implementation
 
@@ -108,13 +107,6 @@ The only difference with the mathematical formulation is that instead of a lasso
 
 ### Optional extension
 
-In some cases, one may want to add a further constraint, `x <= gamma * cp.sum(x)`, where `gamma` is between 0 and 1. Setting `gamma` to e.g. `0.9` will ensure that the mixture in `M` is non-trivial (in the sense that the combination is simply achieved by providing a synonym). The lower we set this parameter, the more we are asking the algorithm to reconstruct `v` with a set of vectors which are dissimilar to it. If we think it as a cooking metaphor, we are replacing an ingredient by another similar one, but with a set of different, that, aggregated achieve the same effect.
+In some cases, one may want to add another constraint, `x <= gamma * cp.sum(x)`, where `gamma` is between 0 and 1. Setting `gamma` to e.g. `0.9` will ensure that the mixture in `M` is non-trivial (in the sense that the combination is simply achieved by providing a synonym). The lower we set this parameter, the more we are asking the algorithm to reconstruct `v` with a set of vectors which are dissimilar to it. If we think it as a cooking metaphor, we are replacing an ingredient not by another similar one, but with a set of different, that aggregated achieve the same effect.
 
 One note of caution: if one adds this additional constraint, the number of embeddings in `M` needs to be greater than (`1/gamma`), otherwise the constraint is not satisfiable.
-
-
-
-
-
-
-
