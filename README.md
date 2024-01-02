@@ -1,8 +1,8 @@
 # Embedding-Cvx-Projection
 
-This repo introduces a simple [convex optimization](https://en.wikipedia.org/wiki/Convex_optimization) method that aims to find the best approximation to a target embedding based on a reduced set of relevant but diverse embeddings.
+This repository presents a basic convex optimization technique that, given a target embedding, aims to find the best approximation of that embedding by means of a reduced set of relevant but diverse embeddings.
 
-The operation achieved is analogous to answering the question: _how can I best explain my input embedding by *meaningfully* combining embeddings from a specified set?_.
+The process is similar to answering the question: _how can I most effectively explain my input embedding as a *meaningful* combination of embeddings from a given set?_
 
 Presumed applications for it are:
 - retrieving relevant but diverse contexts in the retrieval step of [Retrieval Augmented Generation](https://research.ibm.com/blog/retrieval-augmented-generation-RAG) (RAG) workflow.
@@ -139,11 +139,11 @@ This repository presents a convex-optimization method designed for approximating
 
 ### _Is this method novel?_
 
-While the method and its application in the domain of reasoning with embeddings may not be groundbreaking, it addresses an important gap in practical implementation. Convex optimization techniques are often buried in technical jargon, making them less accessible to practitioners. This very simplicity and obviousness are precisely what make these techniques powerful yet underutilized, particularly as we see a surge in embedding adoption through Language Models and Vector Databases.
+While the method and its application in the domain of reasoning with embeddings may not be groundbreaking, it addresses an important gap in practical implementation. Convex optimization techniques are often buried in technical jargon, making them less accessible to practitioners. This very simplicity and obviousness are what make these techniques powerful yet underutilized, particularly as we see a surge in embedding adoption through Language Models and Vector Databases.
 
 ### _Why this repo matters_
 
-This repository aims to demystify these robust, mathematically sound techniques by offering approachable practical examples. By doing so, it seeks to accelerate community adoption and enhance current pipelines, providing a valuable resource even if the methods themselves are not novel. The focus here is not on reinventing the wheel but on facilitating its more effective use in a broader context.
+This repository aims to demystify these robust, mathematically sound techniques by offering practical examples. By doing so, it seeks to accelerate community adoption and enhance current pipelines, providing a valuable resource even if the methods themselves are not novel. The focus here is not on reinventing the wheel but on facilitating its more effective use in a broader context.
 
 **Note**: indeed, at this stage, depending on your use case, rather than importing this module, it will be leaner for your project to directly import `cvxpy` and simply add the code with the problem definition ([here](src/embedding_cvx_projection/cone_projection.py)).
 
