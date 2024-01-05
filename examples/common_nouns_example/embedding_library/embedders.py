@@ -50,15 +50,14 @@ class OpenAIEmbedder(Embedder):
 
         logger.info(f"Embedding input: {input_}")
 
-        embeddings_response = openai.Embedding.create(
+        embeddings_response = openai.embeddings.create(
             model=self.model_name,
-            input=input_,
-            api_key=self.openai_api_key,
+            input=input_
         )
 
-        logger.info(f"Number of embeddings received: {len(embeddings_response['data'])}")
+        logger.info(f"Number of embeddings received: {len(embeddings_response.data)}")
 
-        return [embedding["embedding"] for embedding in embeddings_response["data"]]
+        return [embedding.embedding for embedding in embeddings_response.data]
 
     def __str__(self):
         return f"OpenAIEmbedder using model: {self.model_name}"

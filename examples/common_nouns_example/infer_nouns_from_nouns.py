@@ -113,6 +113,7 @@ def main(words: Union[List[str] | None]):
         raise FileNotFoundError(f"Not found: {common_nouns_library_path}. Run 'build_update_embedding_library.py'")
 
     if words is None:
+        # default words
         words = ["religion", "couple",
          "kingdom", "ruler", "mountain", "lava", "explosion", "summit"]
 
