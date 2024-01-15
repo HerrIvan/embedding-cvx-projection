@@ -30,9 +30,10 @@ class EmbeddingLibrary:
 
     _mask: Union[np.ndarray, None]
     _embedding_matrix: np.ndarray
-    _itow: list[str] = []  # maps column indexes to words
+    _itok: list[str] = []  # maps column indexes to keys
 
-    wtoi: dict[str, int] = {}  # maps words to column indexes
+    ktoi: dict[str, int] = {}  # maps keys to column indexes
+    ktoc: dict[str, str] = {}  # maps keys to content
 
     _cache_coeffs: np.ndarray = None
 
@@ -45,10 +46,10 @@ class EmbeddingLibrary:
         return self._embedding_matrix
 
     @property
-    def itow(self) -> List[str]:
+    def itok(self) -> List[str]:
         if self._mask is not None:
-            return list(np.array(self._itow)[self._mask])
-        return self._itow
+            return list(np.array(self._itok)[self._mask])
+        return self._itok
 
     def __init__(self,
                  embedder: Embedder,
@@ -56,8 +57,8 @@ class EmbeddingLibrary:
         # Initialize attributes
         self.embedder = embedder
         self._mask = None
-        self.wtoi = {}
-        self._itow = []
+        self.ktoi = {}
+        self._itok = []
         self._embedding_matrix = None
 
         # Fetch and add embeddings
@@ -72,7 +73,7 @@ class EmbeddingLibrary:
 
         if not update_existing:
             # remove inputs that are already in the embedding library
-            inputs = [input_ for input_ in inputs if input_ not in self.wtoi]
+            inputs = [input_ for input_ in inputs if input_ not in self.ktoi]
 
         # check if there are any inputs left to add
         if len(inputs) == 0:
@@ -88,17 +89,25 @@ class EmbeddingLibrary:
         for input_, embedding_vector in zip(inputs, embeddings):
             self.add_embedding(input_, embedding_vector=embedding_vector)
 
-    def add_embedding(self,
-                      input_: str,
-                      embedding_vector: Union[List[float], None] = None,
-                      update_existing: bool = False):
+    def add_embedding(
+            self,
+            input_: str,
+            key_: str = None,
+            embedding_vector: Union[List[float], None] = None,
+            update_existing: bool = False,
+    ):
         """
         Add an embedding to the embedding library.
         :param input_:
+        :param key_:
         :param embedding_vector:
         :param update_existing:
         :return:
         """
+
+        # if no key is provided, use the input
+        if key_ is None:
+            key_ = input_
 
         # if no embedding vector is provided, get it from the embedder.
         if embedding_vector is None:
@@ -111,45 +120,49 @@ class EmbeddingLibrary:
         if self._embedding_matrix is None:
             print("initializing embedding matrix")
             self._embedding_matrix = embedding_np
-            self.wtoi[input_] = 0
-            self._itow.append(input_)
+            self.ktoi[key_] = 0
+            self.ktoc[key_] = input_
+            self._itok.append(key_)
             return
 
-        if input_ in self.wtoi:
+        if input_ in self.ktoi:
             if update_existing:
-                col = self.wtoi[input_]
+                col = self.ktoi[key_]
+                self.ktoc[key_] = input_
                 self._embedding_matrix[:, col] = embedding_np
         else:
             self._embedding_matrix = np.hstack([self._embedding_matrix, embedding_np])
-            self.wtoi[input_] = self._embedding_matrix.shape[1] - 1
-            self._itow.append(input_)
+            self.ktoi[key_] = self._embedding_matrix.shape[1] - 1
+            self.ktoc[key_] = input_
+            self._itok.append(key_)
 
     # Remove embeddings
-    def remove_embedding(self, input_: str):
-        if input_ not in self.wtoi:
-            raise ValueError(f"input {input_} not in embedding library")
+    def remove_embedding(self, key_: str):
+        if key_ not in self.ktoi:
+            raise ValueError(f"input {key_} not in embedding library")
 
-        col = self.wtoi[input_]
+        col = self.ktoi[key_]
 
         self._embedding_matrix = np.delete(self._embedding_matrix, col, axis=1)
-        del self.wtoi[input_]
+        del self.ktoi[key_]
+        del self.ktoc[key_]
 
         # update the indexes of the words that come after the removed word
-        for word, col in self.wtoi.items():
+        for word, col in self.ktoi.items():
             if col > col:
-                self.wtoi[word] -= 1
+                self.ktoi[word] -= 1
 
-        del self._itow[col]
+        del self._itok[col]
 
-    def remove_embeddings(self, inputs: Union[List[str], str]):
-        if isinstance(inputs, str):
-            inputs = [inputs]
+    def remove_embeddings(self, keys: Union[List[str], str]):
+        if isinstance(keys, str):
+            keys = [keys]
 
-        for input_ in inputs:
+        for input_ in keys:
             self.remove_embedding(input_)
 
     # Getters
-    def get_embedding(self, input_: Union[List[str], str, int]) -> np.ndarray:
+    def get_embedding(self, input_: Union[List[str], str, int], keys: Union[]) -> np.ndarray:
 
         if isinstance(input_, list):
             return np.array([self.get_embedding(word) for word in input_]).T
@@ -158,7 +171,7 @@ class EmbeddingLibrary:
             col = input_
 
         else:
-            if input_ not in self.wtoi:
+            if input_ not in self.ktoi:
 
                 if self.embed_otf:
                     # get the embedding on the fly, but don't add it to the library
@@ -167,7 +180,7 @@ class EmbeddingLibrary:
                 else:
                     raise ValueError(f"input {input_} not in embedding library")
 
-            col = self.wtoi[input_]
+            col = self.ktoi[input_]
 
         return self._embedding_matrix[:, col]
 
@@ -193,11 +206,11 @@ class EmbeddingLibrary:
             return
 
         if isinstance(input_, str):
-            if input_ not in self.wtoi:
+            if input_ not in self.ktoi:
                 print(f"Can't be masked. Input '{input_}' not in embedding library")
                 return
 
-            col = self.wtoi[input_]
+            col = self.ktoi[input_]
         elif isinstance(input_, int):
             col = input_
         else:
@@ -240,7 +253,7 @@ class EmbeddingLibrary:
 
         return list(
             zip(
-                [self._itow[i] for i in most_similar_ids],
+                [self._itok[i] for i in most_similar_ids],
                 list(self._cache_coeffs[most_similar_ids])
             )
         )
